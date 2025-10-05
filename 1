@@ -1,0 +1,61 @@
+# Import libraries
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_boston
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.neural_network import MLPRegressor
+
+# ================================
+# 1. Load and prepare data
+# ================================
+# Load dataset
+boston = load_boston()
+
+# Extract features: RM (index=5), AGE (index=6)
+X = boston.data[:, [5, 6]]  # RM and AGE
+y = boston.target
+
+# Split into train/test
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Normalize features
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# ================================
+# 2. Define and train MLP
+# ================================
+mlp = MLPRegressor(hidden_layer_sizes=(10, 10),
+                   activation='relu',
+                   solver='adam',
+                   max_iter=2000,
+                   random_state=42)
+mlp.fit(X_train_scaled, y_train)
+
+# ================================
+# 3. Generate 3D plot
+# ================================
+# Create grid for plotting the surface
+x1 = np.linspace(X[:, 0].min(), X[:, 0].max(), 50)
+x2 = np.linspace(X[:, 1].min(), X[:, 1].max(), 50)
+x1_grid, x2_grid = np.meshgrid(x1, x2)
+
+# Scale grid same as training data
+grid_scaled = scaler.transform(np.c_[x1_grid.ravel(), x2_grid.ravel()])
+
+# Predict using model
+y_pred = mlp.predict(grid_scaled).reshape(x1_grid.shape)
+
+# ================================
+# 4. Plot 3D
+# ================================
+fig = plt.figure(figsize=(10, 7))
+ax = fig.add_subplot(111, projection='3d')
+
+# Plot real data points
+ax.scatter(X[:, 0], X[:, 1], y, c='blue', marker='o', alpha=0.6, label='Actual data')
+
+# Plot prediction surface
+ax.plot_surface(x1_grid, x2_grid, y_pred, cmap='viri
