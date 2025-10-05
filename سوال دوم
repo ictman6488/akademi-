@@ -1,0 +1,132 @@
+# ======================================
+# 1. ایمپورت کتابخانه‌ها
+# ======================================
+import tensorflow as tf
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+
+# ======================================
+# 2. مسیر دیتاست
+# ======================================
+train_dir = '/path/to/17flowers/train'  # مسیر پوشه train
+test_dir = '/path/to/17flowers/test'    # مسیر پوشه test
+
+# ======================================
+# 3. پیش‌پردازش داده‌ها و افزایش داده‌ها (Data Augmentation)
+# ======================================
+img_size = (150, 150)
+batch_size = 32
+
+train_datagen = ImageDataGenerator(
+    rescale=1./255,
+    rotation_range=30,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True,
+    fill_mode='nearest'
+)
+
+test_datagen = ImageDataGenerator(rescale=1./255)
+
+train_generator = train_datagen.flow_from_directory(
+    train_dir,
+    target_size=img_size,
+    batch_size=batch_size,
+    class_mode='categorical'
+)
+
+test_generator = test_datagen.flow_from_directory(
+    test_dir,
+    target_size=img_size,
+    batch_size=batch_size,
+    class_mode='categorical'
+)
+
+# ======================================
+# 4. تعریف مدل CNN
+# ======================================
+model = Sequential([
+    Conv2D(32, (3,3), activation='relu', input_shape=(150,150,3)),
+    MaxPooling2D(2,2),
+
+    Conv2D(64, (3,3), activation='relu'),
+    MaxPooling2D(2,2),
+
+    Conv2D(128, (3,3), activation='relu'),
+    MaxPooling2D(2,2),
+
+    Flatten(),
+    Dropout(0.5),
+    Dense(128, activation='relu'),
+    Dense(17, activation='softmax')  # 17 نوع گل
+])
+
+# ======================================
+# 5. کامپایل مدل
+# ======================================
+model.compile(optimizer='adam',
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])
+
+# ======================================
+# 6. تنظیمات توقف زودهنگام
+# ======================================
+early_stop = EarlyStopping(monitor='val_accuracy', patience=5, restore_best_weights=True)
+checkpoint = ModelCheckpoint('best_flowers_model.h5', monitor='val_accuracy', save_best_only=True)
+
+# ======================================
+# 7. آموزش مدل
+# ======================================
+history = model.fit(
+    train_generator,
+    validation_data=test_generator,
+    epochs=25,
+    callbacks=[early_stop, checkpoint]
+)
+
+# ======================================
+# 8. رسم نمودار دقت و خطا
+# ======================================
+plt.plot(history.history['accuracy'], label='Train Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.legend()
+plt.title('دقت مدل در طول آموزش')
+plt.show()
+
+# ======================================
+# 9. ارزیابی مدل
+# ======================================
+loss, acc = model.evaluate(test_generator)
+print(f"دقت نهایی مدل روی داده‌های تست: {acc*100:.2f}%")
+
+# ======================================
+# 10. تست مدل با تصاویر جدید (inference)
+# ======================================
+from tensorflow.keras.preprocessing import image
+
+# مسیر چند تصویر جدید (خارج از دیتاست)
+new_images = [
+    '/path/to/flower1.jpg',
+    '/path/to/flower2.jpg',
+]
+
+for img_path in new_images:
+    img = image.load_img(img_path, target_size=(150,150))
+    img_array = image.img_to_array(img) / 255.0
+    img_array = np.expand_dims(img_array, axis=0)
+
+    prediction = model.predict(img_array)
+    class_index = np.argmax(prediction)
+    class_name = list(train_generator.class_indices.keys())[class_index]
+
+    plt.imshow(image.load_img(img_path))
+    plt.title(f"پیش‌بینی مدل: {class_name}")
+    plt.axis('off')
+    plt.show()
