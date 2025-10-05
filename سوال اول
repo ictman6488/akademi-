@@ -1,0 +1,76 @@
+# ========================================
+# وارد کردن کتابخانه‌های مورد نیاز
+# ========================================
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_boston
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.neural_network import MLPRegressor
+
+# ========================================
+# 1. بارگذاری و آماده‌سازی داده‌ها
+# ========================================
+# بارگذاری دیتاست Boston
+boston = load_boston()
+
+# انتخاب دو ویژگی:
+# RM = میانگین تعداد اتاق‌ها (به عنوان شاخصی از مساحت)
+# AGE = میانگین سن خانه‌ها
+X = boston.data[:, [5, 6]]  # ستون‌های 5 و 6
+y = boston.target           # قیمت خانه‌ها
+
+# تقسیم داده به آموزش و تست (۸۰٪ آموزش، ۲۰٪ تست)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# نرمال‌سازی ویژگی‌ها برای هم‌مقیاس کردن داده‌ها
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# ========================================
+# 2. تعریف و آموزش مدل پرسپترون چندلایه (MLP)
+# ========================================
+mlp = MLPRegressor(hidden_layer_sizes=(10, 10),   # دو لایه مخفی با 10 نورون
+                   activation='relu',             # تابع فعال‌سازی ReLU
+                   solver='adam',                 # روش بهینه‌سازی Adam
+                   max_iter=2000,                 # حداکثر تعداد تکرار برای آموزش
+                   random_state=42)               # عدد تصادفی ثابت برای تکرارپذیری
+
+# آموزش مدل با داده‌های آموزش
+mlp.fit(X_train_scaled, y_train)
+
+# ========================================
+# 3. تولید نقاط برای رسم سطح پیش‌بینی (y_pred)
+# ========================================
+# ایجاد یک شبکه دوبعدی از نقاط (برای رسم سطح)
+x1 = np.linspace(X[:, 0].min(), X[:, 0].max(), 50)   # بازه ویژگی اول (RM)
+x2 = np.linspace(X[:, 1].min(), X[:, 1].max(), 50)   # بازه ویژگی دوم (AGE)
+x1_grid, x2_grid = np.meshgrid(x1, x2)               # ایجاد شبکه دوبعدی
+
+# نرمال‌سازی نقاط شبکه بر اساس مقیاس داده‌های آموزش
+grid_scaled = scaler.transform(np.c_[x1_grid.ravel(), x2_grid.ravel()])
+
+# پیش‌بینی مدل بر روی کل شبکه
+y_pred = mlp.predict(grid_scaled).reshape(x1_grid.shape)
+
+# ========================================
+# 4. رسم نمودار سه‌بعدی
+# ========================================
+fig = plt.figure(figsize=(10, 7))
+ax = fig.add_subplot(111, projection='3d')
+
+# رسم داده‌های واقعی
+ax.scatter(X[:, 0], X[:, 1], y, c='blue', marker='o', alpha=0.6, label='داده‌های واقعی')
+
+# رسم سطح پیش‌بینی‌شده توسط مدل
+ax.plot_surface(x1_grid, x2_grid, y_pred, cmap='viridis', alpha=0.5)
+
+# برچسب‌گذاری محور‌ها
+ax.set_xlabel('RM (تعداد متوسط اتاق‌ها)')
+ax.set_ylabel('AGE (میانگین سن خانه‌ها)')
+ax.set_zlabel('MEDV (قیمت خانه)')
+ax.set_title('مدل پرسپترون چندلایه برای رگرسیون روی دیتاست Boston')
+
+plt.legend()
+plt.show()
