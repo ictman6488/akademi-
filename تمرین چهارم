@@ -1,0 +1,39 @@
+# ======================================================
+# 1. نصب و بارگذاری کتابخانه‌ها
+# ======================================================
+!pip install tensorflow imageio tqdm
+
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+import tensorflow as tf
+from tensorflow.keras import layers
+from tensorflow.keras.models import Sequential
+import imageio
+
+# ======================================================
+# 2. تنظیمات اولیه
+# ======================================================
+# مسیر دیتاست CelebA در گوگل کولب
+data_dir = '/content/celeba/img_align_celeba'
+
+# در صورت عدم وجود، می‌توانید از Kaggle Dataset استفاده کنید:
+# !kaggle datasets download -d zuozhaorui/celeba
+# !unzip celeba.zip -d /content/
+
+# ======================================================
+# 3. بارگذاری و پیش‌پردازش داده‌ها
+# ======================================================
+IMG_SIZE = 64
+BATCH_SIZE = 128
+
+dataset = tf.keras.utils.image_dataset_from_directory(
+    data_dir,
+    label_mode=None,
+    image_size=(IMG_SIZE, IMG_SIZE),
+    batch_size=BATCH_SIZE
+)
+
+# نرمال‌سازی داده‌ها به بازه [-1, 1]
+dataset = dataset.map(lambda x: (x
